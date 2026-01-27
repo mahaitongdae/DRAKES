@@ -12,6 +12,7 @@ import wandb
 import os
 import datetime
 from utils import str2bool, set_seed
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 def fine_tune(new_model,  new_model_y, new_model_y_eval, old_model, args, eps=1e-5):
@@ -123,7 +124,7 @@ def fine_tune(new_model,  new_model_y, new_model_y_eval, old_model, args, eps=1e
     return batch_losses
 
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-argparser.add_argument('--base_path', type=str, default='/data/scratch/wangchy/seqft/')
+argparser.add_argument('--base_path', type=str, default='/n/netscratch/nali_lab_seas/Lab/haitongma/dna_data/data_and_model/')
 argparser.add_argument('--learning_rate', type=float, default=1e-4)
 argparser.add_argument('--num_epochs', type=int, default=1000)
 argparser.add_argument('--num_accum_steps', type=int, default=4)
@@ -132,7 +133,7 @@ argparser.add_argument("--truncate_kl", type=str2bool, default=False)
 argparser.add_argument('--gumbel_temp', type=float, default=1.0)
 argparser.add_argument('--gradnorm_clip', type=float, default=1.0)
 argparser.add_argument('--batch_size', type=int, default=32)
-argparser.add_argument('--name', type=str, default='debug')
+argparser.add_argument('--name', type=str, default='test')
 argparser.add_argument('--total_num_steps', type=int, default=128)
 argparser.add_argument('--copy_flag_temp', type=float, default=None)
 argparser.add_argument('--save_every_n_epochs', type=int, default=50)
