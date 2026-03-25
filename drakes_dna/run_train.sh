@@ -1,5 +1,5 @@
 #!/bin/bash
-export DRAKES_DATA_BASE_PATH=/home/ubuntu/haitong-south-2/DRAKES/data_and_model
+export DRAKES_DATA_BASE_PATH=/workspace/DRAKES/drakes_dna/data_and_model
 wandb_group=gr_linear_compare
 
 mkdir -p logs/${wandb_group}

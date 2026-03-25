@@ -2,7 +2,7 @@
 set -e
 
 # Replace 'my-storage' with the actual name of your Lambda filesystem
-export PERSISTENT_ROOT="/lambda/nfs/haitong-south-2"
+export PERSISTENT_ROOT="/workspace"
 
 # Move Python interpreters here
 export UV_PYTHON_INSTALL_DIR="$PERSISTENT_ROOT/.uv/python"
