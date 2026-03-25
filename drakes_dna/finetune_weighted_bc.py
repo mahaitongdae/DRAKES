@@ -124,7 +124,18 @@ def fine_tune_weighted_bc(new_model, new_model_y, new_model_y_eval, old_model, a
             
             # Convert advantages to weights (positive advantages get higher weights)
             # Use softmax to normalize weights across batch
-            weights = F.softmax(advantages, dim=0)  # [bsz]
+            if args.reweight_type == 'softmax':
+                weights = F.softmax(advantages, dim=0)  # [bsz]
+            else:
+                gr_advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                if args.reweight_type == 'gr_linear':
+                    weights = torch.clamp(gr_advantages, args.lower_bound, 3.0)
+                elif args.reweight_type == 'gr_square':
+                    weights = torch.where(gr_advantages > 0, gr_advantages ** 2, torch.clamp(gr_advantages, args.lower_bound, 0.0))
+                elif args.reweight_type == 'wd1':
+                    weights = F.softmax(advantages, dim=0) - F.softmax(-1. * advantages, dim=0)
+                else:
+                    raise ValueError(f"Invalid reweight mode: {args.reweight_type}")
             
             # Apply weights to diffusion loss
             # Since diffusion_loss is already averaged, we need to scale it by the weights
@@ -211,9 +222,9 @@ def fine_tune_weighted_bc(new_model, new_model_y, new_model_y_eval, old_model, a
 
 
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-argparser.add_argument('--base_path', type=str, default='/n/netscratch/nali_lab_seas/Lab/haitongma/dna_data/data_and_model/')
+argparser.add_argument('--base_path', type=str, default=os.getenv('DRAKES_DATA_BASE_PATH'))
 argparser.add_argument('--learning_rate', type=float, default=1e-4)
-argparser.add_argument('--num_epochs', type=int, default=100)
+argparser.add_argument('--num_epochs', type=int, default=500)
 argparser.add_argument('--num_accum_steps', type=int, default=4)
 argparser.add_argument('--truncate_steps', type=int, default=50)
 argparser.add_argument("--truncate_kl", type=str2bool, default=False)
@@ -233,6 +244,13 @@ argparser.add_argument('--use_dataset_samples', type=str2bool, default=False,
                        help='Whether to use samples from the original training dataset instead of bootstrapping from the model')
 argparser.add_argument('--bootstrap_from_new_model', type=str2bool, default=False,
                        help='Whether to bootstrap from new_model instead of old_model (only applies when not using dataset samples)')
+
+argparser.add_argument('--reweight_type', type=str, default='wd1', choices=['softmax', 'gr_linear', 'gr_square', 'wd1'],
+                       help='Type of reweighting to apply to advantages')
+argparser.add_argument('--lower_bound', type=float, default=0.0,
+                       help='Lower bound for reweighting')
+argparser.add_argument('--wandb_group', type=str, default='debug',
+                       help='Wandb group to log to')
 argparser.add_argument("--seed", type=int, default=0)
 args = argparser.parse_args()
 print(args)
@@ -266,18 +284,23 @@ else:
     run_name = f'{dataset_suffix}_adv_temp{args.advantage_temp}_accum{args.num_accum_steps}_bsz{args.batch_size}_clip{args.gradnorm_clip}_{args.name}_{curr_time}' # _kl{args.kl_weight}
     save_path = os.path.join(log_base_dir, run_name)
     os.makedirs(save_path, exist_ok=True)
-    wandb.init(project='weighted_bc_final', name=run_name, config=args, dir=save_path)
-    log_path = os.path.join(save_path, 'log.txt')
+
+# Load oracle models BEFORE wandb.init (grelu checks wandb login status)
+reward_model = oracle.get_gosai_oracle(mode='train')
+reward_model_eval = oracle.get_gosai_oracle(mode='eval')
+reward_model.eval()
+reward_model_eval.eval()
+
+wandb.init(project='weighted_bc_final', name=run_name, config=args, dir=save_path, group=args.wandb_group)
+log_path = os.path.join(save_path, 'log.txt')
 
 set_seed(args.seed, use_cuda=True)
 
 # Initialize the model
 new_model = diffusion_gosai_update.Diffusion.load_from_checkpoint(cfg.eval.checkpoint_path, config=cfg)
 old_model = diffusion_gosai_update.Diffusion.load_from_checkpoint(cfg.eval.checkpoint_path, config=cfg)
-reward_model = oracle.get_gosai_oracle(mode='train').to(new_model.device)
-reward_model_eval = oracle.get_gosai_oracle(mode='eval').to(new_model.device)
-reward_model.eval()
-reward_model_eval.eval()
+reward_model = reward_model.to(new_model.device)
+reward_model_eval = reward_model_eval.to(new_model.device)
 
 # Load dataset if using dataset samples
 dataset_loader = None

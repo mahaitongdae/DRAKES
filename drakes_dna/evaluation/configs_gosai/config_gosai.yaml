@@ -90,7 +90,7 @@ wandb:
 
 hydra:
   run:
-    dir: /n/netscratch/nali_lab_seas/Lab/haitongma/dna_data/data_and_model/mdlm/outputs_gosai/${now:%Y.%m.%d}/${now:%H%M%S}
+    dir: ${DRAKES_DATA_BASE_PATH}/mdlm/outputs_gosai/${now:%Y.%m.%d}/${now:%H%M%S}
   job:
     chdir: true
 

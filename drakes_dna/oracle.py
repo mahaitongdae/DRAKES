@@ -12,7 +12,7 @@ from scipy.linalg import sqrtm
 from scipy.stats import pearsonr
 import torch.nn.functional as F
 
-base_path = '/n/netscratch/nali_lab_seas/Lab/haitongma/dna_data/data_and_model/'
+base_path = os.getenv('DRAKES_DATA_BASE_PATH')
 
 
 def get_gosai_oracle(mode='train'):

@@ -4,3 +4,9 @@ data_and_model.zip
 **__pycache__**
 **.whl
 **.npz
+
+**/.venv/**
+
+**.log**
+**log**
+**.zip**
